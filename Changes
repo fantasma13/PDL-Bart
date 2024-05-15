@@ -1,0 +1,6 @@
+Revision history for PDL-Bart
+
+0.01    Date/time
+        First version, released on an unsuspecting world.
+	Functions implemented and untested:
+	writecfl, readcfl, bart 
