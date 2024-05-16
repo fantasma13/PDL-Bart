@@ -7,7 +7,11 @@ use strict;
 use PDL::IO::FlexRaw;
 use File::Temp;
 use IPC::Cmd qw/run can_run/;
+use PDL::Core;
 use 5.10.0;
+use Exporter;
+our @ISA=qw/Exporter/;
+our @EXPORT_OK=qw/writecfl readcfl bart/;
 
 =head1 PDL::IO::Bart
 
@@ -38,18 +42,21 @@ Quick summary of what the module does.
 	($res1,$res2,...) = bart('cmd',[$arg1,$arg2]);
 
 Use either file names or piddles as arguments. If piddles are used, temporary files will be created. For output, use
-null() to create a placeholder.
+null() to create a placeholder. Output piddles are returned only in list context, be aware!
 
 =cut
+
+
 
 my $bpath; # path to bart.
 my $tmp_dir; # path to temporary files.
 
-sub wriecfl {
+
+sub writecfl {
 	my $name = shift;
 	my $data = shift;
 
-	my $hdr = writeflex ($name.".cfl", $data) || do{warn ("Cannot write to $name.cfl.\m"); return; };
+	my $hdr = writeflex ($name.".cfl", cfloat($data)) || do{warn ("Cannot write to $name.cfl.\m"); return; };
 	open HDR, ">$name.hdr";
 	print HDR "# Dimensions\n",join ' ',$data->dims;
 	print HDR "\n";
@@ -65,7 +72,7 @@ sub readcfl {
 		last unless defined $line;
 	} until ($line =~/# Dimensions/);
 	$line = <HDR>;
-	my $data = readflex ("$name.cfl",[{Dims=>split (' ',$line),Type=>'complex float'}]) ;
+	my $data = readflex ("$name.cfl",[{Dims=>[split (' ',$line)],Type=>'cfloat'}]) ;
 	$data;
 }
 
@@ -84,18 +91,19 @@ sub bart {
 			} else {
 				$tmp=File::Temp->new();
 			}
-			writecfl($tmp->filename,$arg);
-			$cmd_str += $tmp->filename;
+			$cmd_str .= $tmp->filename;
 			if ($arg->isnull) {
 				push @olist,$arg; # save for return.
 				push @flist,$tmp;
+			} else {
+				writecfl($tmp->filename,$arg);
 			}
 		} elsif ($arg=~/buffer|verbose|timeout/) {
 			push @args,$arg,shift; 
 		} else {
-			$cmd_str += $arg ;
+			$cmd_str .= $arg ;
 		}
-		$cmd_str+=' ';
+		$cmd_str.=' ';
 		print "arg $arg;  cmd $cmd_str\n";
 	}
 	my @list=run(command=>$cmd_str,@args);
@@ -104,7 +112,7 @@ sub bart {
 		$olist[$ti].=readcfl($flist[$ti]->filename); # load output piddles
 			unlink($flist[$ti]->filename.".hdr",$flist[$ti]->filename.".cfl");
 	}
-	return @list,@olist;
+	return @olist,@list;
 }
 
 =head1 AUTHOR
