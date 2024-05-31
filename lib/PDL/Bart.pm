@@ -11,7 +11,7 @@ use PDL::Core;
 use 5.10.0;
 use Exporter;
 our @ISA=qw/Exporter/;
-our @EXPORT_OK=qw/writecfl readcfl bart/;
+our @EXPORT_OK=qw/mapcfl writecfl readcfl bart/;
 
 =head1 PDL::IO::Bart
 
@@ -19,7 +19,7 @@ Interface to the bart toolbox https://mrirecon.github.io/bart/.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
@@ -33,12 +33,21 @@ Quick summary of what the module does.
 =head1 FUNCTIONS
 
 =head2 writecfl
+
 	writecfl(<filename>,$pdl);
 
 =head2 readcfl
+
 	$pdl=readcfl(<filename>);
 
+=head2 mapcfl
+
+	$pdl=mapcfl(<filename>);
+
+Uses mapflex to memory-map files.
+
 =head2 bart 
+
 	($res1,$res2,...) = bart('cmd',[$arg1,$arg2]);
 
 Use either file names or piddles as arguments. If piddles are used, temporary files will be created. For output, use
@@ -63,14 +72,35 @@ sub writecfl {
 	close HDR;
 }
 
+sub mapcfl {
+	my $name = shift;
+	my $data;
+	if ( open (HDR,"$name.hdr")) { #|| do{warn "Cannot read header $name.hdr.\n"; return ;};
+	my $line;
+	loop_block: {do { 
+		$line = <HDR>;
+		last unless (defined ($line));
+	} until ($line =~/# Dimensions/);
+	}
+	$line = <HDR>;
+	$data = mapflex ("$name.cfl",[{Dims=>[split (' ',$line)],Type=>'cfloat'}]) ;
+	} else {
+		my $dims=shift;
+		$data = mapflex ("map_$name.cfl",[{Dims=>$dims,Type=>'cfloat'}],{Creat=>1}) ;
+	}
+	$data;
+}
+
+
 sub readcfl {
 	my $name = shift;
-	open HDR,"$name.hdr" || do{warn "Cannot read header $name.hdr.\n"; return ;};
+	open (HDR,"$name.hdr") || do{warn "Cannot read header $name.hdr.\n"; return ;};
 	my $line;
-	do { 
+	loop_block: {do { 
 		$line = <HDR>;
-		last unless defined $line;
+		last unless (defined ($line));
 	} until ($line =~/# Dimensions/);
+	}
 	$line = <HDR>;
 	my $data = readflex ("$name.cfl",[{Dims=>[split (' ',$line)],Type=>'cfloat'}]) ;
 	$data;
