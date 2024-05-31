@@ -1,6 +1,12 @@
 Revision history for PDL-Bart
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+0.01    2024-5-16
+        
+	First version, released on an unsuspecting world.
 	Functions implemented and untested:
 	writecfl, readcfl, bart 
+
+0.02 	2024-5-31
+
+	Tests added.
+	mapcfl (uses mapflex) added, both for new and exisiting data.
